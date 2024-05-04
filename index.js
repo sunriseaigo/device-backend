@@ -2,8 +2,15 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
+const { SerialPort } = require('serialport')
+const { MockBinding } = require('@serialport/binding-mock')
 
 const app = express()
+const { ReadlineParser } = require('@serialport/parser-readline');
+const parser = new ReadlineParser()
+
+//utils
+const { queryDevice } = require('./utils')
 
 //middleware
 app.use(bodyParser.json())
@@ -16,32 +23,25 @@ app.get("/get_ports", async (req, res) => {
     res.json(ports)
 })
 
-app.listen(8000, () => console.log("Server is running on port 8000..."))
+app.post("/handle_connect", async (req, res) => {
+    const { com, rate } = req.body;
+    const baudRate = rate - "0";
 
+    MockBinding.createPort({ com }, { echo: true, record: true })
+    const port = new SerialPort({ binding: MockBinding, path: { com }, baudRate: baudRate, autoOpen: false, })
 
-const { SerialPort } = require('serialport')
-const { MockBinding } = require('@serialport/binding-mock')
-
-// Create a port and enable the echo and recording.
-MockBinding.createPort('/dev/COM', { echo: true, record: true })
-const port = new SerialPort({ binding: MockBinding, path: '/dev/COM', baudRate: 14400, autoOpen: false, })
-
-const { ReadlineParser } = require('@serialport/parser-readline');
-const parser = new ReadlineParser()
-
-port.open((err) => {
-    if (err) {
-        console.error('Failed to open port:', err);
-    } else {
-        console.log('Mock Port Opened');
-
-        // Simulate sending data to the port
-        port.port.emitData('DevEUI=1234567890ABCDE\n');
-    }
-});
-
-
-port.pipe(parser).on('data', line => {
-    console.log(line.toUpperCase())
+    port.open((err) => {
+        if (err) {
+            res.json({
+                success: false,
+                error: "Device Connection Error"
+            })
+        } else {
+            // Simulate sending data to the port
+            queryDevice(port, parser)
+                .then(result => res.json({ ...result, success: true }))
+        }
+    });
 })
 
+app.listen(8000, () => console.log("Server is running on port 8000..."))
