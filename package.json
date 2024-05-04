@@ -18,6 +18,8 @@
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "net": "^1.0.2",
+    "node-ptouch": "^0.0.4",
     "nodemon": "^3.1.0",
     "serialport": "^12.0.0"
   }
