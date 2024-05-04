@@ -1,41 +1,57 @@
-const sendCommand = (port, parser, command) => {
-    return new Promise((resolve, reject) => {
-        port.write(`${command}\n`, (err) => {
-            if (err) {
-                reject(err);
-            }
-        });
+const Ptouch = require('node-ptouch');
+const net = require('net');
 
-        parser.once('data', (data) => {
-            resolve(data.trim());
+const printData = (res, data, address) => {
+    const ptouch = new Ptouch(1, { copies: 1 });
+
+    ptouch.insertData('deveui_text', data.devEUI);
+    ptouch.insertData('deveui_barcode', data.devEUI);
+
+    ptouch.insertData('appkey_text', data.appKey);
+    ptouch.insertData('appkey_barcode', data.appKey);
+
+    ptouch.insertData('blemac_text', data.bleMac);
+    ptouch.insertData('blemac_barcode', data.bleMac);
+
+    ptouch.insertData('appeui_text', data.appEUI);
+    ptouch.insertData('appeui_barcode', data.appEUI);
+
+    const printData = ptouch.generate();
+
+    // send data to printer
+    const socket = new net.Socket();
+
+    socket.on('close', () => {
+        console.log('Connection closed');
+    });
+    socket.connect(9100, address, (err) => {
+        if (err) {
+            return res.json({
+                success: false,
+                error: "Print Connect Error"
+            })
+        }
+        socket.write(printData, function (err) {
+            if (err) {
+                return res.json({
+                    success: false,
+                    error: "Print Write Error"
+                })
+            }
+            return res.json({
+                success: true,
+            })
+            socket.destroy();
         });
     });
-}
-
-const queryDevice = async (port, parser) => {
-    try {
-        // const devEUI = await sendCommand(port, parser, 'ATC+LORAWAN_DEVEUI=?');
-        // const appKey = await sendCommand(port, parser, 'ATC+LORAWAN_APPKEY=?');
-        // const bleMac = await sendCommand(port, parser, 'ATC+BLE_MAC=?');
-
-        // const appEUI = await sendCommand(port, parser, 'ATC+LORAWAN_APPEUI=?');
-        const devEUI = "111111111111111111"
-        const appKey = "22222222222222222222222"
-        const bleMac = "3333333333333333333333"
-        const appEUI = "444444444444444444"
-        return {
-            devEUI,
-            appKey,
-            bleMac,
-            appEUI
-        }
-    } catch (error) {
-        return {
-            error: "Querying Device Error"
-        }
-    }
+    socket.on('error', () => {
+        return res.json({
+            success: false,
+            error: "Print Connect Error"
+        })
+    })
 }
 
 module.exports = {
-    queryDevice
+    printData
 }

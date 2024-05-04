@@ -3,19 +3,19 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const { SerialPort } = require('serialport')
-const { MockBinding } = require('@serialport/binding-mock')
-
-const Ptouch = require('node-ptouch');
-const net = require('net');
-
-const ptouch = new Ptouch(1, { copies: 2 });
-
-const app = express()
 const { ReadlineParser } = require('@serialport/parser-readline');
-const parser = new ReadlineParser()
+
+//global variable
+let devEuiString = "";
+let appEuiString = "";
+let appKeyString = "";
+let bleMacString = "";
+
+//create instance
+const app = express()
 
 //utils
-const { queryDevice } = require('./utils')
+const { printData } = require('./utils')
 
 //middleware
 app.use(express.static('public'))
@@ -42,63 +42,58 @@ app.post("/handle_connect", async (req, res) => {
     const { com, rate } = req.body;
     const baudRate = rate - "0";
 
-    MockBinding.createPort({ com }, { echo: true, record: true })
-    const port = new SerialPort({ binding: MockBinding, path: { com }, baudRate: baudRate, autoOpen: false, })
+    const port = new SerialPort({
+        path: com,
+        baudRate: baudRate,
+        autoOpen: false,
+    })
 
+    const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }))
+
+    // wait for port to open...
     port.open((err) => {
         if (err) {
-            res.json({
+            return res.json({
                 success: false,
                 error: "Device Connection Error"
             })
-        } else {
-            // Simulate sending data to the port
-            queryDevice(port, parser)
-                .then(result => res.json({ ...result, success: true }))
         }
     });
+
+    parser.on('data', function (data) {
+        const stringData = data.split('=');
+        if (stringData[0] === "ATC+LORAWAN_DEVEUI") {
+            devEuiString = stringData[1];
+        }
+        if (stringData[0] === "ATC+LORAWAN_APPEUI") {
+            appEuiString = stringData[1];
+        }
+        if (stringData[0] === "ATC+LORAWAN_APPKEY") {
+            appKeyString = stringData[1];
+        }
+        if (stringData[0] === "ATC+BLE_MAC") {
+            bleMacString = stringData[1];
+        }
+
+        if (devEuiString && appEuiString && appKeyString && bleMacString) {
+            res.json({
+                devEUI: devEuiString,
+                appEUI: appEuiString,
+                appKey: appKeyString,
+                bleMac: bleMacString,
+                success: true,
+            })
+            devEuiString = "";
+            appEuiString = "";
+            appKeyString = "";
+            bleMacString = "";
+        }
+    })
 })
 
 app.post("/print", async (req, res) => {
     const { data, address } = req.body;
-    ptouch.insertData('DevEUI', data.devEUI);
-    ptouch.insertData('AppKEY', data.appKey);
-    ptouch.insertData('BLE MAC', data.bleMac);
-    ptouch.insertData('AppEUI', data.appEUI);
-    const printData = ptouch.generate();
-
-    // send data to printer
-    const socket = new net.Socket();
-    socket.on('close', () => {
-        console.log('Connection closed');
-    });
-    socket.connect(9100, address, (err) => {
-        if (err) {
-            return res.json({
-                success: false,
-                error: "Print Connect Error"
-            })
-        }
-        socket.write(printData, function (err) {
-            if (err) {
-                return res.json({
-                    success: false,
-                    error: "Print Write Error"
-                })
-            }
-            return res.json({
-                success: true,
-            })
-            socket.destroy();
-        });
-    });
-    socket.on('error', () => {
-        return res.json({
-            success: false,
-            error: "Print Connect Error"
-        })
-    })
-
+    printData(res, data, address)
 })
 
 app.listen(8000, () => console.log("Server is running on port 8000..."))
