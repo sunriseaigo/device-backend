@@ -1,8 +1,23 @@
+//import modules
 const express = require('express')
+const bodyParser = require('body-parser')
+const cors = require('cors')
 
 const app = express()
 
+//middleware
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(cors())
+
+//endpoints
+app.get("/get_ports", async (req, res) => {
+    const ports = await SerialPort.list()
+    res.json(ports)
+})
+
 app.listen(8000, () => console.log("Server is running on port 8000..."))
+
 
 const { SerialPort } = require('serialport')
 const { MockBinding } = require('@serialport/binding-mock')
