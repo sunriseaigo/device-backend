@@ -15,7 +15,7 @@ let bleMacString = "";
 const app = express()
 
 //utils
-const { printData } = require('./utils')
+const { printData, queryDevice } = require('./utils')
 
 //middleware
 app.use(express.static('public'))
@@ -33,11 +33,14 @@ app.use((req, res, next) => {
 });
 
 //endpoints
+
+//Get API to fetch ports
 app.get("/get_ports", async (req, res) => {
     const ports = await SerialPort.list()
     res.json(ports)
 })
 
+// Post API to connect the specific port and baud rate
 app.post("/handle_connect", async (req, res) => {
     const { com, rate } = req.body;
     const baudRate = rate - "0";
@@ -53,11 +56,27 @@ app.post("/handle_connect", async (req, res) => {
     // wait for port to open...
     port.open((err) => {
         if (err) {
+            // console.log(err)
             return res.json({
                 success: false,
                 error: "Device Connection Error"
             })
         }
+
+        // devEuiString = "234";
+        // appEuiString = "234";
+        // appKeyString = "234";
+        // bleMacString = "234";
+        // res.json({
+        //     devEUI: devEuiString,
+        //     appEUI: appEuiString,
+        //     appKey: appKeyString,
+        //     bleMac: bleMacString,
+        //     success: true,
+        // })
+
+        //send query to the device to fetch data
+        queryDevice(port, res)
     });
 
     parser.on('data', function (data) {
