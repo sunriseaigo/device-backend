@@ -73,7 +73,6 @@ app.post("/handle_connect", async (req, res) => {
     port.on('open', function () {
         // open logic
         console.log('===================================;')
-
     })
 
     parser.on('data', function (data) {
