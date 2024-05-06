@@ -5,12 +5,6 @@ const cors = require('cors')
 const { SerialPort } = require('serialport')
 const { ReadlineParser } = require('@serialport/parser-readline');
 
-//global variable
-let devEuiString = "";
-let appEuiString = "";
-let appKeyString = "";
-let bleMacString = "";
-
 //create instance
 const app = express()
 
@@ -40,14 +34,26 @@ app.get("/get_ports", async (req, res) => {
     res.json(ports)
 })
 
+//global variable
+let devEuiString = "";
+let appEuiString = "";
+let appKeyString = "";
+let bleMacString = "";
+
 // Post API to connect the specific port and baud rate
 app.post("/handle_connect", async (req, res) => {
-    const { com, rate } = req.body;
-    const baudRate = rate - "0";
+    // const { com, rate } = req.body;
+    // const baudRate = rate - "0";
+
+    // const port = new SerialPort({
+    //     path: com,
+    //     baudRate: baudRate,
+    //     autoOpen: false,
+    // })
 
     const port = new SerialPort({
-        path: com,
-        baudRate: baudRate,
+        path: 'COM4',
+        baudRate: 115200,
         autoOpen: false,
     })
 
@@ -56,32 +62,27 @@ app.post("/handle_connect", async (req, res) => {
     // wait for port to open...
     port.open((err) => {
         if (err) {
-            // console.log(err)
             return res.json({
                 success: false,
                 error: "Device Connection Error"
             })
         }
-
-        // devEuiString = "234";
-        // appEuiString = "234";
-        // appKeyString = "234";
-        // bleMacString = "234";
-        // res.json({
-        //     devEUI: devEuiString,
-        //     appEUI: appEuiString,
-        //     appKey: appKeyString,
-        //     bleMac: bleMacString,
-        //     success: true,
-        // })
-
-        //send query to the device to fetch data
-        // queryDevice(port, res)
     });
 
+    // The open event is always emitted
+    port.on('open', function () {
+        // open logic
+        console.log('===================================;')
+
+    })
+
     parser.on('data', function (data) {
+        console.log('Recieve the data...')
         const stringData = data.split('=');
-        console.log(stringData)
+
+        console.log(stringData[0]);
+        console.log(stringData[1]);
+
         if (stringData[0] === "ATC+LORAWAN_DEVEUI") {
             devEuiString = stringData[1];
         }
