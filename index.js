@@ -76,11 +76,12 @@ app.post("/handle_connect", async (req, res) => {
         // })
 
         //send query to the device to fetch data
-        queryDevice(port, res)
+        // queryDevice(port, res)
     });
 
     parser.on('data', function (data) {
         const stringData = data.split('=');
+        console.log(stringData)
         if (stringData[0] === "ATC+LORAWAN_DEVEUI") {
             devEuiString = stringData[1];
         }
